@@ -1,5 +1,6 @@
-from django.db import models
 from django.conf import settings
+from django.core.validators import MinValueValidator
+from django.db import models
 
 
 class ShowTheme(models.Model):
@@ -11,8 +12,12 @@ class ShowTheme(models.Model):
 
 class PlanetariumDome(models.Model):
     name = models.CharField(max_length=255)
-    rows = models.PositiveIntegerField()
-    seats_in_row = models.PositiveIntegerField()
+    rows = models.PositiveIntegerField(
+        validators=[MinValueValidator(1)]
+    )
+    seats_in_row = models.PositiveIntegerField(
+        validators=[MinValueValidator(1)]
+    )
 
     def __str__(self):
         return f"{self.name} ({self.capacity} seats)"
@@ -79,8 +84,12 @@ class ShowSession(models.Model):
 
 
 class Ticket(models.Model):
-    row = models.PositiveIntegerField()
-    seat = models.PositiveIntegerField()
+    row = models.PositiveIntegerField(
+        validators=[MinValueValidator(1)]
+    )
+    seat = models.PositiveIntegerField(
+        validators=[MinValueValidator(1)]
+    )
     show_session = models.ForeignKey(
         ShowSession,
         on_delete=models.CASCADE,
