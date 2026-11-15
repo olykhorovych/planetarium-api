@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from django.db.models import F, Count
 from rest_framework.viewsets import ModelViewSet
 
@@ -7,7 +9,6 @@ from planetarium.models import (
     Reservation,
     ShowSession,
     ShowTheme,
-    Ticket,
 )
 from planetarium.serializers import (
     AstronomyShowDetailSerializer,
@@ -20,7 +21,6 @@ from planetarium.serializers import (
     ShowSessionListSerializer,
     ShowSessionSerializer,
     ShowThemeSerializer,
-    TicketSerializer,
 )
 
 
@@ -38,6 +38,14 @@ class AstronomyShowViewSet(ModelViewSet):
     queryset = AstronomyShow.objects.all()
     serializer_class = AstronomyShowSerializer
 
+    @staticmethod
+    def _params_to_ints(qs):
+        """Converts a list of string IDs to a list of integers"""
+
+        return [
+            int(str_id) for str_id in qs.split(",")
+        ]
+
     def get_serializer_class(self):
         if self.action == "list":
             return AstronomyShowListSerializer
@@ -48,10 +56,28 @@ class AstronomyShowViewSet(ModelViewSet):
         return AstronomyShowSerializer
 
     def get_queryset(self):
-        return (
+        """Retrieve the astronomy shows with filters"""
+
+        queryset = (
             super().get_queryset()
             .prefetch_related("show_themes")
         )
+
+        title = self.request.query_params.get("title")
+        themes = (
+            self.request.query_params.get("show_themes")
+            or self.request.query_params.get("themes")
+        )
+
+        if title:
+            queryset = queryset.filter(title__icontains=title)
+
+        if themes:
+            queryset = queryset.filter(
+                    show_themes__id__in=self._params_to_ints(themes)
+            )
+
+        return queryset.distinct()
 
 
 class ShowSessionViewSet(ModelViewSet):
@@ -66,6 +92,30 @@ class ShowSessionViewSet(ModelViewSet):
         )
     )
     serializer_class = ShowSessionSerializer
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+
+        date = self.request.query_params.get("date")
+        astronomy_show = (
+            self.request.query_params.get("astronomy_show")
+            or self.request.query_params.get("show")
+        )
+
+        if date:
+            date = datetime.strptime(date, "%Y-%m-%d").date()
+            queryset = queryset.filter(show_time__date=date)
+
+        if astronomy_show:
+            queryset = queryset.filter(astronomy_show_id=int(astronomy_show))
+
+        if self.action == "retrieve":
+            queryset = queryset.prefetch_related(
+                "astronomy_show__show_themes",
+                "tickets",
+            )
+
+        return queryset.distinct()
 
     def get_serializer_class(self):
         if self.action == "list":
