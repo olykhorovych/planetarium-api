@@ -1,7 +1,12 @@
 from datetime import datetime
 
-from django.db.models import F, Count
-from rest_framework.viewsets import ModelViewSet
+from django.db.models import Count, F
+from rest_framework import mixins
+from rest_framework.viewsets import (
+    GenericViewSet,
+    ModelViewSet,
+    ReadOnlyModelViewSet,
+)
 
 from planetarium.models import (
     AstronomyShow,
@@ -9,6 +14,10 @@ from planetarium.models import (
     Reservation,
     ShowSession,
     ShowTheme,
+)
+from planetarium.pagination import (
+    ReservationPagination,
+    ShowSessionPagination,
 )
 from planetarium.serializers import (
     AstronomyShowDetailSerializer,
@@ -22,23 +31,30 @@ from planetarium.serializers import (
     ShowSessionSerializer,
     ShowThemeSerializer,
 )
-from planetarium.pagination import (
-    ReservationPagination,
-    ShowSessionPagination,
-)
 
 
-class ShowThemeViewSet(ModelViewSet):
+class ShowThemeViewSet(
+    mixins.CreateModelMixin,
+    mixins.ListModelMixin,
+    GenericViewSet,
+):
     queryset = ShowTheme.objects.all()
     serializer_class = ShowThemeSerializer
 
 
-class PlanetariumDomeViewSet(ModelViewSet):
+class PlanetariumDomeViewSet(
+    mixins.CreateModelMixin,
+    mixins.ListModelMixin,
+    GenericViewSet,
+):
     queryset = PlanetariumDome.objects.all()
     serializer_class = PlanetariumDomeSerializer
 
 
-class AstronomyShowViewSet(ModelViewSet):
+class AstronomyShowViewSet(
+    mixins.CreateModelMixin,
+    ReadOnlyModelViewSet,
+):
     queryset = AstronomyShow.objects.all()
     serializer_class = AstronomyShowSerializer
 
@@ -132,7 +148,11 @@ class ShowSessionViewSet(ModelViewSet):
         return ShowSessionSerializer
 
 
-class ReservationViewSet(ModelViewSet):
+class ReservationViewSet(
+    mixins.CreateModelMixin,
+    mixins.ListModelMixin,
+    GenericViewSet,
+):
     queryset = (
         Reservation.objects.prefetch_related(
             "tickets__show_session__astronomy_show",
