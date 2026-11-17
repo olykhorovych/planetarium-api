@@ -1,5 +1,12 @@
-from django.db.models import F, Count
-from rest_framework.viewsets import ModelViewSet
+from datetime import datetime
+
+from django.db.models import Count, F
+from rest_framework import mixins
+from rest_framework.viewsets import (
+    GenericViewSet,
+    ModelViewSet,
+    ReadOnlyModelViewSet,
+)
 
 from planetarium.models import (
     AstronomyShow,
@@ -7,7 +14,10 @@ from planetarium.models import (
     Reservation,
     ShowSession,
     ShowTheme,
-    Ticket,
+)
+from planetarium.pagination import (
+    ReservationPagination,
+    ShowSessionPagination,
 )
 from planetarium.serializers import (
     AstronomyShowDetailSerializer,
@@ -20,23 +30,41 @@ from planetarium.serializers import (
     ShowSessionListSerializer,
     ShowSessionSerializer,
     ShowThemeSerializer,
-    TicketSerializer,
 )
 
 
-class ShowThemeViewSet(ModelViewSet):
+class ShowThemeViewSet(
+    mixins.CreateModelMixin,
+    mixins.ListModelMixin,
+    GenericViewSet,
+):
     queryset = ShowTheme.objects.all()
     serializer_class = ShowThemeSerializer
 
 
-class PlanetariumDomeViewSet(ModelViewSet):
+class PlanetariumDomeViewSet(
+    mixins.CreateModelMixin,
+    mixins.ListModelMixin,
+    GenericViewSet,
+):
     queryset = PlanetariumDome.objects.all()
     serializer_class = PlanetariumDomeSerializer
 
 
-class AstronomyShowViewSet(ModelViewSet):
+class AstronomyShowViewSet(
+    mixins.CreateModelMixin,
+    ReadOnlyModelViewSet,
+):
     queryset = AstronomyShow.objects.all()
     serializer_class = AstronomyShowSerializer
+
+    @staticmethod
+    def _params_to_ints(qs):
+        """Converts a list of string IDs to a list of integers"""
+
+        return [
+            int(str_id) for str_id in qs.split(",")
+        ]
 
     def get_serializer_class(self):
         if self.action == "list":
@@ -48,10 +76,28 @@ class AstronomyShowViewSet(ModelViewSet):
         return AstronomyShowSerializer
 
     def get_queryset(self):
-        return (
+        """Retrieve the astronomy shows with filters"""
+
+        queryset = (
             super().get_queryset()
             .prefetch_related("show_themes")
         )
+
+        title = self.request.query_params.get("title")
+        themes = (
+            self.request.query_params.get("show_themes")
+            or self.request.query_params.get("themes")
+        )
+
+        if title:
+            queryset = queryset.filter(title__icontains=title)
+
+        if themes:
+            queryset = queryset.filter(
+                    show_themes__id__in=self._params_to_ints(themes)
+            )
+
+        return queryset.distinct()
 
 
 class ShowSessionViewSet(ModelViewSet):
@@ -66,6 +112,31 @@ class ShowSessionViewSet(ModelViewSet):
         )
     )
     serializer_class = ShowSessionSerializer
+    pagination_class = ShowSessionPagination
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+
+        date = self.request.query_params.get("date")
+        astronomy_show = (
+            self.request.query_params.get("astronomy_show")
+            or self.request.query_params.get("show")
+        )
+
+        if date:
+            date = datetime.strptime(date, "%Y-%m-%d").date()
+            queryset = queryset.filter(show_time__date=date)
+
+        if astronomy_show:
+            queryset = queryset.filter(astronomy_show_id=int(astronomy_show))
+
+        if self.action == "retrieve":
+            queryset = queryset.prefetch_related(
+                "astronomy_show__show_themes",
+                "tickets",
+            )
+
+        return queryset.distinct()
 
     def get_serializer_class(self):
         if self.action == "list":
@@ -77,7 +148,11 @@ class ShowSessionViewSet(ModelViewSet):
         return ShowSessionSerializer
 
 
-class ReservationViewSet(ModelViewSet):
+class ReservationViewSet(
+    mixins.CreateModelMixin,
+    mixins.ListModelMixin,
+    GenericViewSet,
+):
     queryset = (
         Reservation.objects.prefetch_related(
             "tickets__show_session__astronomy_show",
@@ -85,6 +160,7 @@ class ReservationViewSet(ModelViewSet):
         )
     )
     serializer_class = ReservationSerializer
+    pagination_class = ReservationPagination
 
     def get_serializer_class(self):
         if self.action == "list":
