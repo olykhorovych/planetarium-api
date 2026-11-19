@@ -53,7 +53,7 @@ class ReservationAdmin(ModelAdmin):
     list_display = ("id", "user", "created_at")
     list_select_related = ("user",)
     list_filter = ("created_at",)
-    search_fields = ("user__username",)
+    search_fields = ("user__email",)
     inlines = (TicketInline,)
 
 
