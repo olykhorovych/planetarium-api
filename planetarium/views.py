@@ -2,6 +2,7 @@ from datetime import datetime
 
 from django.db.models import Count, F
 from rest_framework import mixins
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.viewsets import (
     GenericViewSet,
     ModelViewSet,
@@ -19,6 +20,7 @@ from planetarium.pagination import (
     ReservationPagination,
     ShowSessionPagination,
 )
+from planetarium.permissions import IsAdminOrIfAuthenticatedReadOnly
 from planetarium.serializers import (
     AstronomyShowDetailSerializer,
     AstronomyShowListSerializer,
@@ -40,6 +42,7 @@ class ShowThemeViewSet(
 ):
     queryset = ShowTheme.objects.all()
     serializer_class = ShowThemeSerializer
+    permission_classes = (IsAdminOrIfAuthenticatedReadOnly,)
 
 
 class PlanetariumDomeViewSet(
@@ -49,6 +52,7 @@ class PlanetariumDomeViewSet(
 ):
     queryset = PlanetariumDome.objects.all()
     serializer_class = PlanetariumDomeSerializer
+    permission_classes = (IsAdminOrIfAuthenticatedReadOnly,)
 
 
 class AstronomyShowViewSet(
@@ -57,6 +61,7 @@ class AstronomyShowViewSet(
 ):
     queryset = AstronomyShow.objects.all()
     serializer_class = AstronomyShowSerializer
+    permission_classes = (IsAdminOrIfAuthenticatedReadOnly,)
 
     @staticmethod
     def _params_to_ints(qs):
@@ -113,6 +118,7 @@ class ShowSessionViewSet(ModelViewSet):
     )
     serializer_class = ShowSessionSerializer
     pagination_class = ShowSessionPagination
+    permission_classes = (IsAdminOrIfAuthenticatedReadOnly,)
 
     def get_queryset(self):
         queryset = super().get_queryset()
@@ -161,6 +167,7 @@ class ReservationViewSet(
     )
     serializer_class = ReservationSerializer
     pagination_class = ReservationPagination
+    permission_classes = (IsAuthenticated,)
 
     def get_serializer_class(self):
         if self.action == "list":
