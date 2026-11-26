@@ -1,6 +1,10 @@
+from pathlib import Path
+import uuid
+
 from django.conf import settings
 from django.core.validators import MinValueValidator, ValidationError
 from django.db import models
+from django.utils.text import slugify
 
 
 class ShowTheme(models.Model):
@@ -27,12 +31,23 @@ class PlanetariumDome(models.Model):
         return self.rows * self.seats_in_row
 
 
+def astronomy_show_image_file_path(instance, filename):
+    extension = Path(filename).suffix
+    filename = f"{slugify(instance.title)}-{uuid.uuid4()}{extension}"
+
+    return Path("uploads/astronomy_shows") / filename
+
+
 class AstronomyShow(models.Model):
     title = models.CharField(max_length=255)
     description = models.TextField()
     show_themes = models.ManyToManyField(
         ShowTheme,
         related_name="astronomy_shows"
+    )
+    image = models.ImageField(
+        null=True,
+        upload_to=astronomy_show_image_file_path,
     )
 
     class Meta:
