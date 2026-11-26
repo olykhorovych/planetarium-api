@@ -1,8 +1,10 @@
 from datetime import datetime
 
 from django.db.models import Count, F
-from rest_framework import mixins
+from rest_framework import mixins, status
+from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
 from rest_framework.viewsets import (
     GenericViewSet,
     ModelViewSet,
@@ -23,6 +25,7 @@ from planetarium.pagination import (
 from planetarium.permissions import IsAdminOrIfAuthenticatedReadOnly
 from planetarium.serializers import (
     AstronomyShowDetailSerializer,
+    AstronomyShowImageSerializer,
     AstronomyShowListSerializer,
     AstronomyShowSerializer,
     PlanetariumDomeSerializer,
@@ -71,12 +74,28 @@ class AstronomyShowViewSet(
             int(str_id) for str_id in qs.split(",")
         ]
 
+    @action(
+        methods=["POST"],
+        detail=True,
+        url_path="upload-image",
+    )
+    def upload_image(self, request, pk=None):
+        obj = self.get_object()
+        serializer = self.get_serializer(obj, data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
     def get_serializer_class(self):
         if self.action == "list":
             return AstronomyShowListSerializer
 
         if self.action == "retrieve":
             return AstronomyShowDetailSerializer
+
+        if self.action == "upload_image":
+            return AstronomyShowImageSerializer
 
         return AstronomyShowSerializer
 
