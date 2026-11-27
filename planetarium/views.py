@@ -1,6 +1,8 @@
 from datetime import datetime
 
 from django.db.models import Count, F
+from drf_spectacular.utils import extend_schema, OpenApiParameter
+from drf_spectacular.types import OpenApiTypes
 from rest_framework import mixins, status
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -87,6 +89,28 @@ class AstronomyShowViewSet(
 
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                "title",
+                type=OpenApiTypes.STR,
+                description=(
+                    "Filter by astronomy show title "
+                    "(ex. ?title=mercury)"
+                ),
+                required=False,
+            ),
+            OpenApiParameter(
+                "show_themes",
+                type=OpenApiTypes.STR,
+                description="Filter by show themes IDs (ex. ?show_themes=1,2)",
+                required=False,
+            ),
+        ]
+    )
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
+
     def get_serializer_class(self):
         if self.action == "list":
             return AstronomyShowListSerializer
@@ -171,6 +195,28 @@ class ShowSessionViewSet(ModelViewSet):
             return ShowSessionDetailSerializer
 
         return ShowSessionSerializer
+
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                "astronomy_show",
+                type=OpenApiTypes.INT,
+                description=(
+                    "Filter by astronomy show ID "
+                    "(ex. ?astronomy_show=1)"
+                ),
+                required=False,
+            ),
+            OpenApiParameter(
+                "date",
+                type=OpenApiTypes.DATE,
+                description="Filter by show date (ex. ?date=2026-06-26)",
+                required=False,
+            ),
+        ]
+    )
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
 
 
 class ReservationViewSet(
